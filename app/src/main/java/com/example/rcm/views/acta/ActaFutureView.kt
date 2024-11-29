@@ -31,6 +31,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.core.location.LocationManagerCompat.getCurrentLocation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,8 +40,7 @@ fun ActaFutureView(
     context: Context,
     actaTitle: String
 ) {
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    var currentLocation by remember { mutableStateOf<LatLng?>(null) }
+
     val currentDateTime = LocalDateTime.now()
     val formattedDateTime = currentDateTime.format(
         DateTimeFormatter.ofPattern("EEEE, d 'de' MMMM yyyy, hh:mm a", Locale("es"))
@@ -56,17 +56,61 @@ fun ActaFutureView(
     var tipoVisita by remember { mutableStateOf("") }
     var horasDuracion by remember { mutableStateOf("") }
     var minutosDuracion by remember { mutableStateOf("") }
-    var equipos by remember { mutableStateOf(mutableListOf<Pair<String, String>>()) }
-    var equipoSeleccionado by remember { mutableStateOf("") }
-    var equipoCosto by remember { mutableStateOf("") }
     var segundaVisita by remember { mutableStateOf("") }
 
-    val equiposOpciones = listOf("Laptop", "Servidor", "Impresora", "Router", "Switch")
     val opcionesSegundaVisita = listOf("Sí", "No")
 
-    LaunchedEffect(Unit) {
-        currentLocation = getCurrentLocation(fusedLocationClient)
-    }
+    val ubicacionRCM = LatLng(4.694504593530979, -74.07515704525008)
+
+    // Información de categorías, marcas y dispositivos
+    val equiposData = mapOf(
+        "Control de Acceso" to mapOf(
+            "Rosslare" to listOf(
+                "Controlador AC-215",
+                "Controlador AC-425",
+                "Teclado AY-K12",
+                "Lector AY-L23",
+                "Cerradura EL-300"
+            ),
+            "ZKTeco" to listOf(
+                "Controlador ZK-700",
+                "Controlador ZK-900",
+                "Teclado ProCapture-X",
+                "Lector InBio-460",
+                "Panel MA300"
+            ),
+            "D-Tech" to listOf(
+                "Controlador DT-100",
+                "Controlador DT-200",
+                "Lector DT-LX100",
+                "Teclado DT-KPAD",
+                "Cerradura DT-SMARTLOCK"
+            )
+        ),
+        "CCTV" to mapOf(
+            "D-Tech" to listOf(
+                "Cámara DT-500",
+                "Cámara DT-700",
+                "DVR DT-X500",
+                "NVR DT-N300",
+                "Cámara IP DT-IP900"
+            ),
+            "Hikvision" to listOf(
+                "Cámara DS-2CD",
+                "Cámara DS-2DE",
+                "DVR DS-7200",
+                "NVR DS-7600",
+                "Cámara IP DS-2CV"
+            )
+        )
+    )
+
+    var categoriaSeleccionada by remember { mutableStateOf("") }
+    var marcaSeleccionada by remember { mutableStateOf("") }
+    var dispositivoSeleccionado by remember { mutableStateOf("") }
+    var equipos by remember { mutableStateOf(mutableListOf<Pair<String, String>>()) }
+    var equipoCosto by remember { mutableStateOf("") }
+
 
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
@@ -91,8 +135,11 @@ fun ActaFutureView(
                     )
                 }
                 Text(
-                    text = "Acta: $formattedActaTitle",
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 22.sp),
+                    text = "$formattedActaTitle",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 22.sp
+                    ),
                     modifier = Modifier.padding(start = 8.dp)
                 )
             }
@@ -111,7 +158,7 @@ fun ActaFutureView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Mapa de ubicación actual
+            // Mapa con ubicación fija
             Text("Ubicación actual:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Card(
                 modifier = Modifier
@@ -122,8 +169,7 @@ fun ActaFutureView(
             ) {
                 val cameraPositionState = rememberCameraPositionState {
                     position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
-                        currentLocation ?: LatLng(0.0, 0.0),
-                        15f
+                        ubicacionRCM, 15f
                     )
                 }
 
@@ -131,9 +177,7 @@ fun ActaFutureView(
                     modifier = Modifier.fillMaxSize(),
                     cameraPositionState = cameraPositionState
                 ) {
-                    currentLocation?.let {
-                        Marker(state = MarkerState(position = it), title = "Ubicación actual")
-                    }
+                    Marker(state = MarkerState(position = ubicacionRCM), title = "Sede RCM")
                 }
             }
 
@@ -142,7 +186,8 @@ fun ActaFutureView(
             // Tipo de visita
             Text("Tipo de Visita:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             var expanded by remember { mutableStateOf(false) }
-            val opciones = listOf("Cotización", "Instalación", "Mantenimiento", "Reparación", "Control")
+            val opciones =
+                listOf("Cotización", "Instalación", "Mantenimiento", "Reparación", "Control")
 
             ExposedDropdownMenuBox(
                 expanded = expanded,
@@ -178,19 +223,23 @@ fun ActaFutureView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-// Duración de la visita (horas y minutos)
+            // Duración de la visita (horas y minutos)
             Text("Duración de la visita (hh:mm):", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             Row {
                 OutlinedTextField(
                     value = horasDuracion,
-                    onValueChange = { horasDuracion = it.filter { char -> char.isDigit() }.take(2) },
+                    onValueChange = {
+                        horasDuracion = it.filter { char -> char.isDigit() }.take(2)
+                    },
                     label = { Text("Horas") },
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f).padding(end = 8.dp)
                 )
                 OutlinedTextField(
                     value = minutosDuracion,
-                    onValueChange = { minutosDuracion = it.filter { char -> char.isDigit() }.take(2) },
+                    onValueChange = {
+                        minutosDuracion = it.filter { char -> char.isDigit() }.take(2)
+                    },
                     label = { Text("Minutos") },
                     keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                     modifier = Modifier.weight(1f)
@@ -199,131 +248,250 @@ fun ActaFutureView(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Equipos implicados
+            // Header
             Text("Equipos Implicados:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            var equiposExpanded by remember { mutableStateOf(false) }
+
+            // Selección de categoría
+            Text("Categoría de equipo:")
+            var categoriaExpanded by remember { mutableStateOf(false) }
             ExposedDropdownMenuBox(
-                expanded = equiposExpanded,
-                onExpandedChange = { equiposExpanded = !equiposExpanded }
+                expanded = categoriaExpanded,
+                onExpandedChange = { categoriaExpanded = !categoriaExpanded }
             ) {
                 OutlinedTextField(
-                    value = equipoSeleccionado,
+                    value = categoriaSeleccionada,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text("Seleccione un equipo") },
+                    label = { Text("Seleccione categoría") },
                     trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = equiposExpanded)
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoriaExpanded)
                     },
                     modifier = Modifier
                         .menuAnchor()
                         .fillMaxWidth()
                 )
                 ExposedDropdownMenu(
-                    expanded = equiposExpanded,
-                    onDismissRequest = { equiposExpanded = false }
+                    expanded = categoriaExpanded,
+                    onDismissRequest = { categoriaExpanded = false }
                 ) {
-                    equiposOpciones.forEach { equipo ->
+                    equiposData.keys.forEach { categoria ->
                         DropdownMenuItem(
                             onClick = {
-                                equipoSeleccionado = equipo
-                                equiposExpanded = false
+                                categoriaSeleccionada = categoria
+                                marcaSeleccionada = ""
+                                dispositivoSeleccionado = ""
+                                categoriaExpanded = false
                             },
-                            text = { Text(equipo) }
+                            text = { Text(categoria) }
                         )
                     }
                 }
-            }
-
-            OutlinedTextField(
-                value = equipoCosto,
-                onValueChange = { equipoCosto = it.filter { char -> char.isDigit() } },
-                label = { Text("Costo unitario") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth()
-            )
-            Button(
-                onClick = {
-                    if (equipoSeleccionado.isNotBlank() && equipoCosto.isNotBlank()) {
-                        equipos.add(equipoSeleccionado to "$$equipoCosto")
-                        equipoSeleccionado = ""
-                        equipoCosto = ""
-                    }
-                },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Text("Agregar equipo")
-            }
-
-            equipos.forEach { (nombre, costo) ->
-                Text("$nombre: $costo", fontSize = 16.sp)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Segunda visita
-            Text("¿Se requiere una segunda visita?", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-            var segundaVisitaExpanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                expanded = segundaVisitaExpanded,
-                onExpandedChange = { segundaVisitaExpanded = !segundaVisitaExpanded }
-            ) {
-                OutlinedTextField(
-                    value = segundaVisita,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Seleccione opción") },
-                    trailingIcon = {
-                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = segundaVisitaExpanded)
-                    },
-                    modifier = Modifier
-                        .menuAnchor()
-                        .fillMaxWidth()
-                )
-                ExposedDropdownMenu(
-                    expanded = segundaVisitaExpanded,
-                    onDismissRequest = { segundaVisitaExpanded = false }
+            // Selección de marca
+            if (categoriaSeleccionada.isNotEmpty()) {
+                Text("Marca de equipo:")
+                var marcaExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = marcaExpanded,
+                    onExpandedChange = { marcaExpanded = !marcaExpanded }
                 ) {
-                    opcionesSegundaVisita.forEach { opcion ->
-                        DropdownMenuItem(
-                            onClick = {
-                                segundaVisita = opcion
-                                segundaVisitaExpanded = false
-                            },
-                            text = { Text(opcion) }
-                        )
+                    OutlinedTextField(
+                        value = marcaSeleccionada,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Seleccione marca") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = marcaExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = marcaExpanded,
+                        onDismissRequest = { marcaExpanded = false }
+                    ) {
+                        equiposData[categoriaSeleccionada]?.keys?.forEach { marca ->
+                            DropdownMenuItem(
+                                onClick = {
+                                    marcaSeleccionada = marca
+                                    dispositivoSeleccionado = ""
+                                    marcaExpanded = false
+                                },
+                                text = { Text(marca) }
+                            )
+                        }
                     }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Selección de dispositivo
+            if (marcaSeleccionada.isNotEmpty()) {
+                Text("Dispositivo:")
+                var dispositivoExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = dispositivoExpanded,
+                    onExpandedChange = { dispositivoExpanded = !dispositivoExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = dispositivoSeleccionado,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Seleccione dispositivo") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = dispositivoExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = dispositivoExpanded,
+                        onDismissRequest = { dispositivoExpanded = false }
+                    ) {
+                        equiposData[categoriaSeleccionada]?.get(marcaSeleccionada)
+                            ?.forEach { dispositivo ->
+                                DropdownMenuItem(
+                                    onClick = {
+                                        dispositivoSeleccionado = dispositivo
+                                        dispositivoExpanded = false
+                                    },
+                                    text = { Text(dispositivo) }
+                                )
+                            }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Campo para costo del equipo
+            if (dispositivoSeleccionado.isNotEmpty()) {
+                OutlinedTextField(
+                    value = equipoCosto,
+                    onValueChange = { equipoCosto = it.filter { char -> char.isDigit() } },
+                    label = { Text("Costo unitario") },
+                    keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        if (dispositivoSeleccionado.isNotBlank() && equipoCosto.isNotBlank()) {
+                            equipos.add(
+                                "$dispositivoSeleccionado" to "$$equipoCosto"
+                            )
+                            dispositivoSeleccionado = ""
+                            equipoCosto = ""
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text("Agregar equipo")
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+
+            // Mostrar equipos agregados
+            if (equipos.isNotEmpty()) {
+                Text("Equipos agregados:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                equipos.forEach { (nombre, costo) ->
+                    Text("$nombre: $costo", fontSize = 16.sp)
                 }
             }
 
-            Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
-            // Botón para guardar
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        snackbarHostState.showSnackbar(
-                            message = "Información guardada por $technicianName el $formattedDateTime",
-                            duration = SnackbarDuration.Short
-                        )
+                // Segunda visita
+                Text(
+                    "¿Se requiere una segunda visita?",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                var segundaVisitaExpanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = segundaVisitaExpanded,
+                    onExpandedChange = { segundaVisitaExpanded = !segundaVisitaExpanded }
+                ) {
+                    OutlinedTextField(
+                        value = segundaVisita,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Seleccione opción") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = segundaVisitaExpanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .fillMaxWidth()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = segundaVisitaExpanded,
+                        onDismissRequest = { segundaVisitaExpanded = false }
+                    ) {
+                        opcionesSegundaVisita.forEach { opcion ->
+                            DropdownMenuItem(
+                                onClick = {
+                                    segundaVisita = opcion
+                                    segundaVisitaExpanded = false
+                                },
+                                text = { Text(opcion) }
+                            )
+                        }
                     }
-                },
-                modifier = Modifier.align(Alignment.CenterHorizontally)
-            ) {
-                Text("Guardar")
+                }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+                // Detalles de la visita
+                Text("Detalles de la visita:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                var detallesVisita by remember { mutableStateOf("") }
+
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = detallesVisita,
+                        onValueChange = {
+                            if (it.length <= 400) detallesVisita = it
+                        },
+                        label = { Text("Ingrese detalles de la visita") },
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                        maxLines = 4
+                    )
+                    // Contador de caracteres
+                    Text(
+                        text = "${400 - detallesVisita.length} caracteres restantes",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.Gray,
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(4.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Botón para guardar
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "Información guardada por $technicianName el $formattedDateTime",
+                                duration = SnackbarDuration.Short
+                            )
+                        }
+                    },
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                ) {
+                    Text("Guardar")
+                }
             }
         }
     }
-}
-
-
-@SuppressLint("MissingPermission")
-suspend fun getCurrentLocation(fusedLocationClient: com.google.android.gms.location.FusedLocationProviderClient): LatLng? {
-    return try {
-        val location = fusedLocationClient.lastLocation.await()
-        location?.let {
-            LatLng(it.latitude, it.longitude)
-        }
-    } catch (e: Exception) {
-        null
-    }
-}

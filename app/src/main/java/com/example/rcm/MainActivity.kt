@@ -43,7 +43,7 @@ fun RCMApp(context: android.content.Context) {
                 onEmployeeClick = { navController.navigate("login_employee") }, navController = navController,
             )
         }
-        composable("cliente") { // Nueva ruta
+        composable("cliente") {
             ClienteMainView(navController = navController)
         }
         composable("actas") {
@@ -53,7 +53,7 @@ fun RCMApp(context: android.content.Context) {
         // Pantalla de login para empleados
         composable("login_employee") {
             LoginView(onLoginSuccess = { navController.navigate("home")}, navController = navController,
-                )
+            )
         }
 
         // Pantalla principal (Home)
@@ -61,13 +61,13 @@ fun RCMApp(context: android.content.Context) {
             HomeView(navController = navController, context = context)
         }
 
-        // Ruta para actas futuras
-        composable("acta_futura/{id}") { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("id")
+// Ruta para actas futuras
+        composable("acta_futura/{title}") { backStackEntry ->
+            val title = backStackEntry.arguments?.getString("title")?.replace("_", " ") ?: "Acta Futura"
             ActaFutureView(
                 navController = navController,
                 context = context,
-                actaTitle = "Acta Futura $id"
+                actaTitle = title
             )
         }
 
@@ -75,17 +75,16 @@ fun RCMApp(context: android.content.Context) {
             ProfileView(navController = navController)
         }
 
-        // Ruta para actas pasadas (detalle)
-        composable("detalle_acta/{id}") { backStackEntry ->
-            val id = backStackEntry.arguments?.getString("id")
+// Ruta para actas pasadas (detalle)
+        composable("detalle_acta/{title}") { backStackEntry ->
+            val title = backStackEntry.arguments?.getString("title")?.replace("_", " ") ?: "Acta"
             ActaDetailView(
                 navController = navController,
-                actaTitle = "Acta $id",
+                actaTitle = title,
                 estado = "Completada",
                 tecnico = "Yair Isaac",
                 fecha = "8-11-24 12:13pm",
                 notas = "Notas detalladas del acta...",
-                ubicacion = LatLng(4.681, -74.042) // Coordenadas de ejemplo
             )
         }
     }

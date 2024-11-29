@@ -1,15 +1,9 @@
 package com.example.rcm.views.acta
 
-
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,159 +14,145 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import com.example.rcm.R
 import com.example.rcm.views.navbar.NavBar
+import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import com.google.android.gms.maps.model.LatLng
-import java.time.LocalDate
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActaDetailView(
     navController: NavController,
-    actaTitle: String, // Título completo del acta
+    actaTitle: String,
     estado: String,
     tecnico: String,
     fecha: String,
-    notas: String,
-    ubicacion: LatLng
+    notas: String
 ) {
+    // Lista de ubicaciones según el título del acta
+    val ubicaciones = mapOf(
+        "Terpel Aeropuerto" to LatLng(4.7019, -74.1472),
+        "Terpel Serviruedas" to LatLng(4.6948, -74.0683),
+        "Caracol" to LatLng(4.6944, -74.0727),
+        "Toyota Morato" to LatLng(4.6951, -74.0734),
+        "Empresa XYZ" to LatLng(4.6543, -74.0588),
+        "Uniandes" to LatLng(4.6030, -74.0652)
+    )
+
+    // Asignar ubicación específica
+    val ubicacionActa = ubicaciones[actaTitle] ?: LatLng(0.0, 0.0)
+
+    // Información adicional para el acta
+    val equiposData = listOf(
+        "Controlador AC-215" to "$500",
+        "Cámara DS-2CD" to "$800"
+    )
+    val segundaVisita = "Sí"
+    val detallesVisita = "Instalación exitosa. Todo en orden."
+
     Scaffold(
         bottomBar = { NavBar(navController) }
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState())
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                // Botón de retroceso y título
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.arrow_back_24),
-                            contentDescription = "Volver",
-                            tint = Color.Black
-                        )
-                    }
-                    Text(
-                        text = actaTitle, // Muestra el nombre real del acta
-                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                        modifier = Modifier.padding(start = 8.dp)
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(
+                        painter = painterResource(id = com.example.rcm.R.drawable.arrow_back_24),
+                        contentDescription = "Volver"
                     )
                 }
-
-                // Estado del acta
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Estado: $estado",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(onClick = { /* Información adicional del estado */ }) {
-                        Icon(
-                            imageVector = Icons.Default.Info,
-                            contentDescription = "Información",
-                            tint = Color.Gray
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Generación de Acta (Mapa)
                 Text(
-                    text = "Generación de acta",
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 22.sp),
-                    fontWeight = FontWeight.Bold
-                )
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(180.dp), // Reducción de altura
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(4.dp)
-                ) {
-                    val cameraPositionState = rememberCameraPositionState {
-                        position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
-                            ubicacion,
-                            14f // Zoom inicial
-                        )
-                    }
-
-                    GoogleMap(
-                        modifier = Modifier.fillMaxSize(),
-                        cameraPositionState = cameraPositionState
-                    ) {
-                        Marker(
-                            state = MarkerState(position = ubicacion),
-                            title = actaTitle
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Técnico encargado
-                Text(
-                    text = "Técnico encargado: $tecnico",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                // Fecha de acta
-                Text(
-                    text = "Fecha de acta: $fecha",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Notas de acta
-                Text(
-                    text = "Notas de acta:",
-                    style = MaterialTheme.typography.titleMedium.copy(fontSize = 22.sp),
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = notas,
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "$actaTitle",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.padding(start = 8.dp)
                 )
             }
 
-            // Botón de WhatsApp en la esquina inferior derecha
-            FloatingActionButton(
-                onClick = { /* Acción para compartir por WhatsApp */ },
-                containerColor = Color(0xFF25D366),
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Estado
+            Text("Estado del acta:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(estado, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Mapa de ubicación
+            Text("Ubicación de la actividad:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Card(
                 modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(16.dp)
-                    .size(56.dp)
+                    .fillMaxWidth()
+                    .height(200.dp),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(4.dp)
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.whatsapp_logo),
-                    contentDescription = "Compartir en WhatsApp"
-                )
+                val cameraPositionState = rememberCameraPositionState {
+                    position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
+                        ubicacionActa, 15f
+                    )
+                }
+                GoogleMap(
+                    modifier = Modifier.fillMaxSize(),
+                    cameraPositionState = cameraPositionState
+                ) {
+                    Marker(
+                        state = MarkerState(position = ubicacionActa),
+                        title = actaTitle
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Técnico encargado
+            Text("Técnico encargado:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(tecnico, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Fecha del acta
+            Text("Fecha de la actividad:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(fecha, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Equipos implicados
+            Text("Equipos implicados:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            equiposData.forEach { (nombre, costo) ->
+                Text("$nombre: $costo", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Segunda visita
+            Text("¿Se requiere una segunda visita?", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(segundaVisita, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Detalles de la visita
+            Text("Detalles de la visita:", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            Text(detallesVisita, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Botón de acción
+            Button(
+                onClick = { /* Acción para compartir o guardar */ },
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            ) {
+                Text("Compartir Acta")
             }
         }
     }

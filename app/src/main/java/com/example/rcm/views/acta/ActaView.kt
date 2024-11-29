@@ -96,12 +96,12 @@ fun ActaView(navController: NavController) {
                     SectionWithScrollableItems(
                         title = "Próximas actas",
                         items = listOf(
-                            "Terpel Aeropuerto_25-11-24",
-                            "Terpel Pontevedra_25-11-24",
-                            "Meals de Colombia_26-11-24",
-                            "Mazda Morato_27-11-24",
-                            "Shell 116_28-11-24",
-                            "Empresa ABC_29-11-24"
+                            "Terpel Aeropuerto_02-12-24",
+                            "Terpel Pontevedra_02-12-24",
+                            "Meals de Colombia_03-12-24",
+                            "Mazda Morato_04-12-24",
+                            "Shell 116_05-12-24",
+                            "Empresa ABC_06-12-24"
                         ),
                         navController = navController,
                         isFuture = true
@@ -113,12 +113,12 @@ fun ActaView(navController: NavController) {
                     SectionWithScrollableItems(
                         title = "Actas pasadas",
                         items = listOf(
-                            "Terpel Aeropuerto_16-11-24",
-                            "Terpel Serviruedas_15-11-24",
-                            "Caracol_14-11-24",
-                            "Toyota Morato_14-11-24",
-                            "Empresa XYZ_13-11-24",
-                            "Uniandes_12-11-24"
+                            "Terpel Aeropuerto_25-11-24",
+                            "Terpel Serviruedas_25-11-24",
+                            "Caracol_22-11-24",
+                            "Toyota Morato_21-11-24",
+                            "Empresa XYZ_20-11-24",
+                            "Uniandes_18-11-24"
                         ),
                         navController = navController,
                         isFuture = false
@@ -251,9 +251,9 @@ fun ActaListItem(
         IconButton(
             onClick = {
                 if (isFuture) {
-                    navController.navigate("acta_futura/$id")
+                    navController.navigate("acta_futura/${title.replace(" ", "_")}")
                 } else {
-                    navController.navigate("detalle_acta/$id")
+                    navController.navigate("detalle_acta/${title.replace(" ", "_")}")
                 }
             }
         ) {

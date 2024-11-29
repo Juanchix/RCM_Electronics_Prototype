@@ -1,6 +1,5 @@
 package com.example.rcm.views.home
 
-import android.annotation.SuppressLint
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -11,7 +10,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -22,27 +22,19 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.rcm.R
 import com.example.rcm.views.navbar.NavBar
-import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
-import kotlinx.coroutines.tasks.await
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
 fun HomeView(navController: NavController, context: Context) {
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    var currentLocation by remember { mutableStateOf<LatLng?>(null) }
-
-    // Obtener la ubicación actual
-    LaunchedEffect(Unit) {
-        currentLocation = getCurrentLocation(fusedLocationClient)
-    }
+    // Coordenadas fijas para la ubicación
+    val ubicacionFija = LatLng(4.695678910180845, -74.08382059760916)
 
     // Obtener la fecha actual
     val currentDate = LocalDate.now().format(
@@ -60,9 +52,8 @@ fun HomeView(navController: NavController, context: Context) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()) // Habilitar scroll
+                    .verticalScroll(rememberScrollState())
             ) {
-                // Header con bordes inferiores redondeados
                 // Header con bordes redondeados
                 Box(
                     modifier = Modifier
@@ -109,7 +100,7 @@ fun HomeView(navController: NavController, context: Context) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp) // Padding original para los demás componentes
+                        .padding(horizontal = 16.dp)
                 ) {
                     // Visitas pendientes
                     Text(
@@ -124,21 +115,21 @@ fun HomeView(navController: NavController, context: Context) {
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            VisitItem("Terpel Aeropuerto", "25 nov", "10:00 am")
+                            VisitItem("Terpel Aeropuerto", "2 dic", "10:00 am")
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            VisitItem("Terpel Pontevedra", "25 nov", "5:00 pm")
+                            VisitItem("Terpel Pontevedra", "2 dic", "5:00 pm")
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            VisitItem("Meals de Colombia", "26 nov", "9:00 am")
+                            VisitItem("Meals de Colombia", "3 dic", "9:00 am")
                             Divider(modifier = Modifier.padding(vertical = 8.dp))
-                            VisitItem("Mazda Morato", "27 nov", "8:30 am")
+                            VisitItem("Mazda Morato", "4 dic", "8:30 am")
                         }
                     }
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Ubicación actual
+                    // Ubicación fija
                     Text(
-                        text = "Ubicación actual",
+                        text = "Ubicación",
                         style = MaterialTheme.typography.titleMedium.copy(fontSize = 22.sp),
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -146,35 +137,24 @@ fun HomeView(navController: NavController, context: Context) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(225.dp), // Aumentar altura del mapa
+                            .height(225.dp),
                         shape = RoundedCornerShape(12.dp),
                         elevation = CardDefaults.cardElevation(4.dp)
                     ) {
-                        val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-                        val cameraPositionState = rememberCameraPositionState()
-                        var currentLocation by remember { mutableStateOf<LatLng?>(null) }
-
-                        // Actualizar la ubicación y el estado de la cámara
-                        LaunchedEffect(Unit) {
-                            currentLocation = getCurrentLocation(fusedLocationClient)
-                            currentLocation?.let {
-                                cameraPositionState.position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
-                                    it,
-                                    15f // Zoom inicial más cercano
-                                )
-                            }
+                        val cameraPositionState = rememberCameraPositionState {
+                            position = com.google.android.gms.maps.model.CameraPosition.fromLatLngZoom(
+                                ubicacionFija, 15f
+                            )
                         }
 
                         GoogleMap(
                             modifier = Modifier.fillMaxSize(),
                             cameraPositionState = cameraPositionState
                         ) {
-                            currentLocation?.let {
-                                Marker(
-                                    state = MarkerState(position = it),
-                                    title = "Tu ubicación actual"
-                                )
-                            }
+                            Marker(
+                                state = MarkerState(position = ubicacionFija),
+                                title = "Sede Bogotá Morato"
+                            )
                         }
                     }
 
@@ -204,18 +184,6 @@ fun HomeView(navController: NavController, context: Context) {
                 )
             }
         }
-    }
-}
-
-@SuppressLint("MissingPermission")
-suspend fun getCurrentLocation(fusedLocationClient: FusedLocationProviderClient): LatLng? {
-    return try {
-        val location = fusedLocationClient.lastLocation.await()
-        location?.let {
-            LatLng(it.latitude, it.longitude)
-        }
-    } catch (e: Exception) {
-        null
     }
 }
 
